@@ -12,8 +12,8 @@ var soundfile = SoundFile.new;
 var overshoot, env, path, baseFreq;
 
 //path = "/Users/fsc/Documents/_sounds/cello/C-string/C-str-7_mono.aif";
-~baseFreq = 262;
-path = "/Users/fsc/Documents/_sounds/cello/C-str-3-mono.wav";
+~baseFreq = 261;
+path = "/Users/fsc/Documents/_sounds/cello/C-string/C-str-7-m-261.aif";
 //path = "/Users/fsc/Documents/_sounds/stand/bluett.aiff";
 //path = "/Users/fsc/D.ocuments/_sounds/antlers/bear-full.wav";
 //path = "/Users/fsc/Documents/_sounds/stand/dolce1.aiff";
@@ -139,12 +139,12 @@ fork {
 	| i |
 	case
 	{ i < ~transition }
-		{ cos(pi * i / ~transition).neg + 1 / 2 }
+	{ cos(pi * i / ~transition).neg + 1 / 2 }
 
 	{ i > (~envsize - ~transition) }
-		{ cos(pi * (~envsize - i) / ~transition).neg + 1 / 2 }
+	{ cos(pi * (~envsize - i) / ~transition).neg + 1 / 2 }
 	{ true }
-		{ 1};
+	{ 1};
 });
 ~envcoll.plot;
 ~env = Buffer.loadCollection(s, ~envcoll);
@@ -159,94 +159,98 @@ buffer.plot;
 (
 ~synth = {
 	var mousePos, centerPos,
-		centerPosA, centerPosB,
+	centerPosA, centerPosB,
 	centerA, centerB,
-		nextCenterA, nextCenterB,
-		startA, startB, nextStartA, nextStartB,
-		trig,
-		dur, durA, durB, trigDurA, trigDurB,
-		trigStartA, trigStartB,
-		trigNextStartA, trigNextStartB,
-		sigA,
-		nextcenterPosA, nextcenterPosB, centerPosMix, rate,
-		wavelength,
-		poll;
+	nextCenterA, nextCenterB,
+	startA, startB, nextStartA, nextStartB,
+	trig,
+	dur, durA, durB, trigDurA, trigDurB,
+	trigStartA, trigStartB,
+	trigNextStartA, trigNextStartB,
+	sigA,
+	nextcenterPosA, nextcenterPosB, centerPosMix, rate,
+	wavelength,
+	poll, final;
 
+	final = Splay.ar((([1] + 12).midicps / 150).collect({
+		|rate|
 
+		rate = rate * LFNoise2.ar(1 / 20, 0.01, 1) * LFNoise2.kr(0.4, 0.6, 1.6).round(1);
+		centerPos = LFSaw.ar(1 / 60, Rand(0, 0.05)) + LFNoise2.kr(0.2, 0.1);
 
-	rate = [1];
+		//centerPos = (centerPos * BufSamples.kr( ~crossingBuffer.bufnum )).min(BufSamples.kr( ~crossingBuffer.bufnum )).max(0);
+		//centerPos = LFSaw.ar([0.01,0.02,0.04, 0.035] / BufDur.kr(~buffer.bufnum)) + MouseX.kr(0,2) % 1;
+		centerPos = centerPos * BufSamples.kr(~crossingBuffer.bufnum);
 
-	centerPos = LFSaw.kr(1 / 40);
+		centerPosA = 	Select.kr(centerPos.floor % 2, [centerPos.floor + 1, centerPos.floor]);
+		centerPosB = 	Select.kr(centerPos.floor % 2, [centerPos.floor, centerPos.floor + 1]);
+		centerPosMix = 	Select.kr(centerPos.floor % 2, [1 - (centerPos - centerPosB), centerPos - centerPosA]);
 
-	//centerPos = (centerPos * BufSamples.kr( ~crossingBuffer.bufnum )).min(BufSamples.kr( ~crossingBuffer.bufnum )).max(0);
-	//centerPos = LFSaw.ar([0.01,0.02,0.04, 0.035] / BufDur.kr(~buffer.bufnum)) + MouseX.kr(0,2) % 1;
-	centerPos = centerPos * BufSamples.kr(~crossingBuffer.bufnum);
-	centerPos.postln;
+		nextcenterPosA = centerPosA + 1;
+		nextcenterPosB = centerPosB + 1;
 
-	centerPosA = 	Select.kr(centerPos.floor % 2, [centerPos.floor + 1, centerPos.floor]);
-	centerPosB = 	Select.kr(centerPos.floor % 2, [centerPos.floor, centerPos.floor + 1]);
-	centerPosMix = 	Select.kr(centerPos.floor % 2, [1 - (centerPos - centerPosB), centerPos - centerPosA]);
-	centerPosA.postln;
+		centerA = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
+		centerB = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosB % BufSamples.kr(~crossingBuffer.bufnum), 1) };
+		nextCenterA =	{ Dbufrd(~crossingBuffer.bufnum, nextcenterPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
+		nextCenterB =	{ Dbufrd(~crossingBuffer.bufnum, nextcenterPosB % BufSamples.kr(~crossingBuffer.bufnum), 1) };
 
-	nextcenterPosA = centerPosA + 1;
-	nextcenterPosB = centerPosB + 1;
+		//wavelength = LFNoise2.kr(0.05).range(0.9,1);
+		wavelength = 2;
+		durA = { ( (nextCenterA - centerA)/SampleRate.ir ).max(0.0000000001).min(1) / wavelength };
+		durB = { ( (nextCenterB - centerB)/SampleRate.ir ).max(0.0000000001).min(1) / wavelength };
 
-	centerA = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
-	centerB = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosB % BufSamples.kr(~crossingBuffer.bufnum), 1) };
-	nextCenterA =	{ Dbufrd(~crossingBuffer.bufnum, nextcenterPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
-	nextCenterB =	{ Dbufrd(~crossingBuffer.bufnum, nextcenterPosB % BufSamples.kr(~crossingBuffer.bufnum), 1) };
+		startA = centerA - (durA / 2);
+		startB = centerB - (durB / 2);
+		nextStartA = nextCenterA - (durA / 2);
+		nextStartB = nextCenterB - (durB / 2);
 
-	//wavelength = LFNoise2.kr(0.05).range(0.9,1);
-	wavelength = 2;
-	durA = { ( (nextCenterA - centerA)/SampleRate.ir ).max(0.0000000001).min(1) / wavelength };
-	durB = { ( (nextCenterB - centerB)/SampleRate.ir ).max(0.0000000001).min(1) / wavelength };
+		dur = durA + ((durB - durA) * centerPosMix);
+		//dur = 1 / ((rate * 150) + { LFNoise2.kr(300).range(-2,2) });
 
-	startA = centerA - (durA / 2);
-	startB = centerB - (durB / 2);
-	nextStartA = nextCenterA - (durA / 2);
-	nextStartB = nextCenterB - (durB / 2);
+		#trig, trigStartA, trigStartB, trigNextStartA, trigNextStartB, trigDurA, trigDurB =
+		TDuty.ar( dur * rate, 0, [ 1, startA, startB, nextStartA, nextStartB, durA, durB ] );
+		//centerPosMix = Gate.ar( centerPosMix, trig );
 
-	dur = durA + ((durB - durA) * centerPosMix);
-	//dur = 1 / ((rate * 140) + { LFNoise2.kr(300).range(-2,2) });
+		Out.kr(0, [ centerPosMix, centerPosA, centerPosB,
+			Gate.ar( trigDurA*rate, trigDurA*rate),
+			Gate.ar( trigStartA / BufSamples.kr(~buffer.bufnum), trigStartA / BufSamples.kr(~buffer.bufnum)),
+			Gate.ar( trigDurB*rate, trigDurB*rate),
+			Gate.ar( trigStartB / BufSamples.kr(~buffer.bufnum) , trigStartB / BufSamples.kr(~buffer.bufnum))
+		]);
+		sigA = [ XFade2.ar(
+			BufGrainB.ar( trig,
+				dur: trigDurA * rate * 1.5,
+				sndbuf: ~buffer.bufnum,
+				rate: 1,
+				pos: trigStartA / BufSamples.kr(~buffer.bufnum),
+				envbuf: ~env.bufnum,
+				interp: 4),
+			DC.ar(0),
+			(centerPosMix * 2 - 1)
+		),
+		XFade2.ar(
+			DC.ar(0),
+			BufGrainB.ar( trig,
+				dur: trigDurB * rate * 1.5,
+				sndbuf: ~buffer.bufnum,
+				rate: 1,
+				pos: trigStartB / BufSamples.kr(~buffer.bufnum),
+				envbuf: ~env.bufnum,
+				interp: 4),
+			(centerPosMix * 2 - 1)
+		)];
+		sigA = CombC.ar( sigA, 5, [0.1, 0.5, 2.3, 4.5], 0.4 );
+		sigA = FreeVerb.ar( Mix(sigA), room:2.9 );
+		//LeakDC.ar( sigA ) * [1,1]
+	}));
 
-	#trig, trigStartA, trigStartB, trigNextStartA, trigNextStartB, trigDurA, trigDurB =
-		TDuty.ar( dur, 0, [ 1, startA, startB, nextStartA, nextStartB, durA, durB ] );
-	//centerPosMix = Gate.ar( centerPosMix, trig );
+	final = final * EnvGen.kr(Env.sine(75), doneAction:2);
+	final = LeakDC.ar(final);
 
-	Out.kr(0, [ centerPosMix, centerPosA, centerPosB,
-				Gate.ar( trigDurA*rate, trigDurA*rate),
-				Gate.ar( trigStartA / BufSamples.kr(~buffer.bufnum), trigStartA / BufSamples.kr(~buffer.bufnum)),
-				Gate.ar( trigDurB*rate, trigDurB*rate),
-				Gate.ar( trigStartB / BufSamples.kr(~buffer.bufnum) , trigStartB / BufSamples.kr(~buffer.bufnum))
-			]);
-	sigA = [ XFade2.ar(
-				BufGrainB.ar( trig,
-					dur: dur,
-					sndbuf: ~buffer.bufnum,
-					rate: 1,
-					pos: trigStartA / BufSamples.kr(~buffer.bufnum),
-					envbuf: ~env.bufnum,
-					interp: 4),
-				DC.ar(0),
-				(centerPosMix * 2 - 1)
-			),
-			XFade2.ar(
-				DC.ar(0),
-				BufGrainB.ar( trig,
-					dur: dur,
-					sndbuf: ~buffer.bufnum,
-					rate: 1,
-					pos: trigStartB / BufSamples.kr(~buffer.bufnum),
-					envbuf: ~env.bufnum,
-					interp: 4),
-				(centerPosMix * 2 - 1)
-			)].postln;
-
-	sigA = CombC.ar( sigA, 5,
-		[0.1, 0.5, 2.3, 4.5], 0.4 );
-	//sigA = FreeVerb.ar( Mix( sigA ), room:2.9 );
-	//[ sigA, sigA ];
-	//LeakDC.ar( sigA ) * [1,1]
 }.play;
 )
 
+~cap = AudioCapture("/Users/fsc/Desktop/SC_CLEAN/HARM/_capture");
+~cap.track = "harm";
+
+~cap.stop
