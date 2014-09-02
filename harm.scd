@@ -171,16 +171,18 @@ buffer.plot;
 	sigA,
 	nextcenterPosA, nextcenterPosB, centerPosMix, rate,
 	wavelength,
-	poll, final, resFreq, env;
+	poll, final, resFreq, env, jump;
 
-	final = Splay.ar(([0, 3, 5, 9, 16] + 25).dbamp.collect({
+	final = Splay.ar(([-1, 3, 5, 7, 7.1] + 63).midicps.collect({
 		|freq|
 
 		resFreq = freq.postln;// * LFNoise2.ar(1 / 20, 0.01, 1) * LFNoise2.kr(0.4, 0.6, 1.6).round(1);
 //		freq = freq * Lag3.kr(LFNoise2.kr(0.05).range(0.9, 1.15).round(0.2), 10);
 		//centerPos = LFSaw.ar(1 / 40, Rand(0, 0.0)) + LFNoise2.kr(1, 0.1);
-		env = Decay2.ar(Impulse.ar(LFNoise2.kr(0.4, 0.2, 0.5).round(0.05)), 0.001, 4);
-		centerPos = LFNoise2.kr(LFNoise2.kr(3, 0.2, 0.21), 0.05, 0.95);
+		//env = Decay2.ar(Impulse.ar([1/2, 1/6.rand]), 0.001, 4);
+		env = Impulse.ar(1 / 4) + DelayN.ar(Impulse.ar(3 / (1..6).choose), 0.2, LFNoise2.kr(0.06, 0.1, 0.1));
+		env = Decay2.ar(env, 0.001, 4.5) * 0.3;
+		centerPos = LFNoise2.kr(LFNoise2.kr(3, 0.2, 0.21), 0.1, 0.9);
 		//centerPos = LFNoise2.kr(1, 0.03, MouseY.kr(0.03, 0.97, lag:5));
 		//centerPos = 0.5;
 
@@ -188,13 +190,13 @@ buffer.plot;
 		//centerPos = LFSaw.ar([0.01,0.02,0.04, 0.035] / BufDur.kr(~buffer.bufnum)) + MouseX.kr(0,2) % 1;
 		centerPos = centerPos * BufSamples.kr(~crossingBuffer.bufnum);
 
-		centerPosA = 	Select.kr(centerPos.floor % 2, [centerPos.floor + 1, centerPos.floor]);
-		centerPosB = 	Select.kr(centerPos.floor % 2, [centerPos.floor, centerPos.floor + 1]);
+		jump = 1;
+		centerPosA = 	Select.kr(centerPos.floor % 2, [centerPos.floor + jump, centerPos.floor]);
+		centerPosB = 	Select.kr(centerPos.floor % 2, [centerPos.floor, centerPos.floor + jump]);
 		centerPosMix = 	Select.kr(centerPos.floor % 2, [1 - (centerPos - centerPosB), centerPos - centerPosA]);
 
-		nextcenterPosA = centerPosA + 10;
-		nextcenterPosB = centerPosB + 10;
-
+		nextcenterPosA = centerPosA + (1 - env * 6).round(1);
+		nextcenterPosB = centerPosB + (1 - env * 6).round(1);
 		centerA = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
 		centerB = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosB % BufSamples.kr(~crossingBuffer.bufnum), 1) };
 		nextCenterA =	{ Dbufrd(~crossingBuffer.bufnum, nextcenterPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
@@ -226,7 +228,7 @@ buffer.plot;
 		]);
 		sigA = [ XFade2.ar(
 			BufGrainB.ar( trig,
-				dur: trigDurA * 4,
+				dur: trigDurA * 2,
 				sndbuf: ~buffer.bufnum,
 				rate: resFreq.explin(50, 4000, 0.25, 2.5),
 				pos: trigStartA / BufSamples.kr(~buffer.bufnum),
@@ -238,7 +240,7 @@ buffer.plot;
 		XFade2.ar(
 			DC.ar(0),
 			BufGrainB.ar( trig,
-				dur: trigDurB * 4,
+				dur: trigDurB * 2,
 				sndbuf: ~buffer.bufnum,
 				rate: resFreq.explin(50, 4000, 0.25, 2.5),
 				pos: trigStartB / BufSamples.kr(~buffer.bufnum),
