@@ -239,19 +239,29 @@ buffer.plot;
 	], sig, freqscale: resFreq, decayscale:resAmt);
 	sig = LeakDC.ar(sig);
 
-	Out.ar(out, Pan2.ar(sig, pos));
+	Out.ar(out, Pan2.ar(sig, pan));
 };
 
 SynthDef(\longSineHARM, {
 	arg amp = 1, dur = 20, bowFreq=1.5, periodNum;
-	var env = amp * EnvGen.kr(Env([0, 1, 1, 0], [0.001, dur - 8, 4]), doneAction:2);
-	periodNum = Select.kr(LFNoise2.kr(0.1).range(-0.2, 5.2), [1/4, 1/2, 1, 2, 4]);
-	env = Impulse.ar(1 / 36) + Impulse.ar(1 / 6) + DelayN.ar(Impulse.ar(periodNum / Rand(4, 8).round(1)), 0.2, LFNoise2.kr(0.06, 0.03, 0.03));
-	env = Decay2.ar(env, 0.001, 4.5) * 0.3;
+	var env;
+	env = amp * EnvGen.kr(Env.sine(dur), doneAction:2);
 	SynthDef.wrap(~harmbase, prependArgs: [
 		env,
-		LFNoise2.ar(bowFreq, 0.05, 0.1)
+		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, 0.9)
 	]);
+}).add;
+
+SynthDef(\postHARM, {
+	| in, out, wetAmp |
+	var sig, wetSig;
+	sig = In.ar(in, 2);
+	wetSig = Rotate2.ar(sig[0], sig[1], SinOsc.ar(0.0221)).collect({
+		|s|
+		Mix.ar(CombC.ar(s, 5, [0.1 + rand(-0.04, 0.04), 0.5 + rand(-0.04, 0.04), 2.3 + rand(-0.04, 0.04), 4.5 + rand(-0.04, 0.04)], 0.4));
+	});
+	wetSig = FreeVerb.ar(wetSig, room:2.9);
+	Out.ar(out, sig + (wetAmp * wetSig));
 }).add;
 
 )
@@ -276,14 +286,14 @@ Pdef(\pat1, Pbind(
 	\dur, Pseq([24], inf),
 	\amp, 1,
 	\freq, Pseq([
-		([-3 + [0, -12, -24], 1, 4, 8, 13].flatten + 58).midicps,
-		([-4 + [0, -12, -24], 1, 4, 8, 11].flatten + 58).midicps,
-		([-4 + [0, -12, -24], 1, 4, 9, 11].flatten + 58).midicps,
-		([-3 + [0, -12, -24], 2, 4, 9, 11].flatten + 58).midicps,
-		([-4 + [0, -12, -24], 2, 4, 9, 11].flatten + 58).midicps,
-		([-6 + [0, -12, -24], 2, 4, 9, 14].flatten + 58).midicps,
-		([-8 + [0, -12, -24], 2, 4, 6, 11].flatten + 58).midicps,
-		([-8 + [0, -12, -24], -2, 3, 6, 10].flatten + 58).midicps,
+		([-3 + [0, -12, -24], 1, 4, 8, 13].flatten + 38).midicps,
+		([-4 + [0, -12, -24], 1, 4, 8, 11].flatten + 38).midicps,
+		([-4 + [0, -12, -24], 1, 4, 9, 11].flatten + 38).midicps,
+		([-3 + [0, -12, -24], 2, 4, 9, 11].flatten + 38).midicps,
+		([-4 + [0, -12, -24], 2, 4, 9, 11].flatten + 38).midicps,
+		([-6 + [0, -12, -24], 2, 4, 9, 14].flatten + 38).midicps,
+		([-8 + [0, -12, -24], 2, 4, 6, 11].flatten + 38).midicps,
+		([-8 + [0, -12, -24], -2, 3, 6, 10].flatten + 38).midicps,
 		// ([-6-12, -6, 2, 4.1, 7, 7.1, 7.064, 12, 12.05] + 68).midicps,
 		//([-6-12, -6, 1, 1.1, 7, 7.1, 7.064, 15, 15.05] + 68).midicps
 		//([-14-12, -4, 0, 0.1, 8, 8.1, 8.064, 14, 14.05] + 48).midicps
@@ -299,6 +309,32 @@ Pdef(\pat1, Pbind(
 	\soundBuffer, ~buffer.bufnum,
 	\envBuffer, ~env.bufnum,
 )).play
+)
+
+(
+
+(
+instrument: \postHARM,
+in: 10,
+out: 0
+).play;
+
+(
+instrument: \longSineHARM,
+out: 10,
+dur: 30,
+amp: 1,
+freq: ([-3 + [0, 12, 24, 36, 40.3]].flatten + 28 + { 0.3.rand }).value.midicps,
+pan: { rand(-0.9, 0.9) },
+resFreq: 1 / 8,
+jump: 1,
+nextJump: 2,
+grainDur: 2,
+bowFreq: 0.5,
+crossingBuffer: ~crossingBuffer.bufnum,
+soundBuffer: ~buffer.bufnum,
+envBuffer: ~env.bufnum,
+).play
 )
 
 ~synth = {
