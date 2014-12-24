@@ -243,6 +243,11 @@ buffer.plot;
 	sig = Pan2.ar(sig, pan);
 };
 
+DistCurve(\krsh,
+	[-1, 0, 1],
+	Env([-1, -0.8, -0.5, -0.8, 0.8, 0.5, 0.8, 1.0], curve:\hold)
+);
+
 SynthDef(\longSineHARM, {
 	arg amp = 1, dur = 20, bowFreq=1.5, periodNum;
 	var env;
