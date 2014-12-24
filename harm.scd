@@ -14,6 +14,8 @@ var overshoot, env, path, baseFreq;
 //path = "/Users/fsc/Documents/_sounds/cello/C-string/C-str-7_mono.aif";
 ~baseFreq = 261;
 path = "/Users/fsc/Documents/_sounds/cello/C-string/C-str-7-m-261.aif";
+// path = "/Users/fsc/Documents/_sounds/phil-samples/_forHARM/french-horn_F4_very-long_piano_glissando.wav";
+// path = "/Users/fsc/Documents/_sounds/phil-samples/_forHARM/french-horn_C3_very-long_pianissimo_normal.wav";
 //path = "/Users/fsc/Documents/_sounds/stand/bluett.aiff";
 //path = "/Users/fsc/Documents/_sounds/antlers/bear-full.wav";
 //path = "/Users/fsc/Documents/_sounds/stand/dolce1.aiff";
