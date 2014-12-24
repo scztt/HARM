@@ -161,7 +161,7 @@ buffer.plot;
 
 (
 ~harmbase = {
-	arg amp=1, pos, jump = 1, nextJump = 1, wavelength = 1, grainDur = 2, resFreq = 1, resAmt=10, freq=440, pan=0, out=0, crossingBuffer, soundBuffer, envBuffer;
+	arg amp=1, pos, jump = 1, nextJump = 1, wavelength = 1, grainDur = 2, resFreq = 1, resAmt=10, resBump=0, freq=440, pan=0, crossingBuffer, soundBuffer, envBuffer;
 
 	var centerPos, centerPosA, centerPosB, centerPosMix,
 	nextCenterPosA, nextCenterPosB,
@@ -190,8 +190,8 @@ buffer.plot;
 	centerB			= { Dbufrd(crossingBuffer, centerPosB % crossingBufferSamples, 1) };
 	nextCenterA		= { Dbufrd(crossingBuffer, nextCenterPosA % crossingBufferSamples, 1) };
 	nextCenterB		= { Dbufrd(crossingBuffer, nextCenterPosB % crossingBufferSamples, 1) };
-	durA = { ((nextCenterA - centerA)/SampleRate.ir).max(0.0000000001).min(1) / wavelength };
-	durB = { ((nextCenterB - centerB)/SampleRate.ir).max(0.0000000001).min(1) / wavelength };
+	durA = { ((nextCenterA - centerA) / SampleRate.ir).max(0.0000000001).min(1) / wavelength };
+	durB = { ((nextCenterB - centerB) / SampleRate.ir).max(0.0000000001).min(1) / wavelength };
 
 	startA = centerA - (durA / 2);
 	startB = centerB - (durB / 2);
@@ -240,8 +240,7 @@ buffer.plot;
 		(0.1 / (1..14))
 	], sig, freqscale: resFreq, decayscale:resAmt);
 	sig = LeakDC.ar(sig);
-
-	Out.ar(out, Pan2.ar(sig, pan));
+	sig = Pan2.ar(sig, pan);
 };
 
 SynthDef(\longSineHARM, {
