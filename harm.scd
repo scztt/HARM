@@ -258,6 +258,20 @@ SynthDef(\longSineHARM, {
 		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, 0.2),
 		jump
 	]);
+	sig = sig + MoogLadder.ar(DistCurve(\krsh).ar(sig, MouseX.kr(0, 1), MouseY.kr(0, 48), MouseY.kr(0, -48)), 8640, 0.2);
+	sig = LeakDC.ar(sig);
+	Out.ar(out, sig);
+}).addReplace;
+
+SynthDef(\strikeHARM, {
+	arg out=0, amp = 1, dur = 20, bowFreq=1.5, startPos=0.9, endPos=0.9, gate = 1;
+	var env, sig;
+	env = amp * EnvGen.kr(Env.adsr(1.1, 1.1, 0.01, 20), gate:gate, timeScale: dur, doneAction:2);
+	sig = SynthDef.wrap(~harmbase, prependArgs: [
+		env,
+		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, Line.kr(startPos, endPos, dur))
+	]);
+	Out.ar(out, sig);
 }).add;
 
 SynthDef(\postHARM, {
@@ -266,11 +280,11 @@ SynthDef(\postHARM, {
 	sig = In.ar(in, 2);
 	wetSig = Rotate2.ar(sig[0], sig[1], SinOsc.ar(0.0221)).collect({
 		|s|
-		Mix.ar(CombC.ar(s, 5, [0.1 + rand(-0.04, 0.04), 0.5 + rand(-0.04, 0.04), 2.3 + rand(-0.04, 0.04), 4.5 + rand(-0.04, 0.04)], 0.4));
+		Mix.ar(CombC.ar(s, 5, [0.1 + rand(-0.04, 0.04), 0.5 + rand(-0.04, 0.04), 2.3 + rand(-0.04, 0.04), 4.5 + rand(-0.04, 0.04)], 8));
 	});
 	wetSig = FreeVerb.ar(wetSig, room:2.9);
 	Out.ar(out, sig + (wetAmp * wetSig));
-}).add;
+}).addReplace;
 
 )
 
