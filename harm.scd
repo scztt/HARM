@@ -249,12 +249,14 @@ DistCurve(\krsh,
 );
 
 SynthDef(\longSineHARM, {
-	arg amp = 1, dur = 20, bowFreq=1.5, periodNum;
-	var env;
-	env = amp * EnvGen.kr(Env.sine(dur), doneAction:2);
-	SynthDef.wrap(~harmbase, prependArgs: [
+	arg out, amp = 1, dur = 20, bowFreq=1.5, periodNum;
+	var env, sig, jump;
+	env = amp * EnvGen.kr(Env.sine(dur * 1.4), doneAction:2);
+	jump = LFNoise2.ar(0.2, 1, 4 + env);
+	sig = SynthDef.wrap(~harmbase, prependArgs: [
 		env,
-		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, 0.9)
+		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, 0.2),
+		jump
 	]);
 }).add;
 
