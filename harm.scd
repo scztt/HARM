@@ -308,25 +308,28 @@ Pdef(\pat1, Pbind(
 	\dur, Pseq([24], inf),
 	\amp, 1,
 	\freq, Pseq([
-		([-3 + [0, -12, -24], 1, 4, 8, 13].flatten + 38).midicps,
-		([-4 + [0, -12, -24], 1, 4, 8, 11].flatten + 38).midicps,
-		([-4 + [0, -12, -24], 1, 4, 9, 11].flatten + 38).midicps,
-		([-3 + [0, -12, -24], 2, 4, 9, 11].flatten + 38).midicps,
-		([-4 + [0, -12, -24], 2, 4, 9, 11].flatten + 38).midicps,
-		([-6 + [0, -12, -24], 2, 4, 9, 14].flatten + 38).midicps,
-		([-8 + [0, -12, -24], 2, 4, 6, 11].flatten + 38).midicps,
-		([-8 + [0, -12, -24], -2, 3, 6, 10].flatten + 38).midicps,
-		// ([-6-12, -6, 2, 4.1, 7, 7.1, 7.064, 12, 12.05] + 68).midicps,
-		//([-6-12, -6, 1, 1.1, 7, 7.1, 7.064, 15, 15.05] + 68).midicps
-		//([-14-12, -4, 0, 0.1, 8, 8.1, 8.064, 14, 14.05] + 48).midicps
+		([-3 + [0, -12, -24], 1, 4, 8, 13].flatten + 48).midicps,
+		([-4 + [0, -12, -24], 1, 4, 8, 11].flatten + 48).midicps,
+		([-4 + [0, -12, -24], 1, 4, 9, 11].flatten + 48).midicps,
+		([-3 + [0, -12, -24], 2, 4, 9, 11].flatten + 48).midicps,
+		([-4 + [0, -12, -24], 2, 4, 9, 11].flatten + 48).midicps,
+		([-6 + [0, -12, -24], 2, 4, 9, 14].flatten + 48).midicps,
+		([-8 + [0, -12, -24], 2, 4, 6, 11].flatten + 48).midicps,
+		([-8 + [0, -12, -24], -2, 3, 6, 10].flatten + 48).midicps,
+		([-6-12, -6, 2, 4.1, 7, 7.1, 7.064, 12, 12.05] + 68).midicps,
+		([-6-12, -6, 1, 1.1, 7, 7.1, 7.064, 15, 15.05] + 68).midicps
+		([-14-12, -4, 0, 0.1, 8, 8.1, 8.064, 14, 14.05] + 48).midicps
 	], inf) ,
 //	\freq, ([-3-12, -3, 2, 4.1, 8, 8.1, 8.064, 14, 14.05] + 68).midicps,
 	\pan, { rand(-0.4, 0.4) },
 	\resFreq, 1 / 8,
-	\jump, 1,
-	\nextJump, 2,
+	\jump, 4,
+	\nextJump, 4,
 	\grainDur, 2,
-	\bowFreq, 0.1,
+	\bowFreq, 0.12,
+	\startPos, 0.1,
+	\endPos, 0.9,
+	\out, 10,
 	\crossingBuffer, ~crossingBuffer.bufnum,
 	\soundBuffer, ~buffer.bufnum,
 	\envBuffer, ~env.bufnum,
@@ -334,22 +337,32 @@ Pdef(\pat1, Pbind(
 )
 
 (
+Pdef(\pat2, Pbind(
+	\freq, Pseq([
+		([-4 + [0, -12, -24], 1, 4, 8, 11, 8 + 12].flatten + 38).midicps,
+		([-4 + [0, -12, -24], 1, 4, 4 + 12, 6 + 12].flatten + 28).midicps.postln,
+		([-3 + [0, -12, -24], 1, 4, 8, 13].flatten + 28).midicps,
+	], inf)
+) <> Pdef(\pat1)).play;
+)
 
+(
 (
 instrument: \postHARM,
 in: 10,
 out: 0
 ).play;
 
-(
+(.
 instrument: \longSineHARM,
 out: 10,
 dur: 30,
 amp: 1,
-freq: ([-3 + [0, 12, 24, 36, 40.3]].flatten + 28 + { 0.3.rand }).value.midicps,
+// 40 -> 42 -> 40 -> 38 etc.
+freq: ([-3 + [0, 12, 24, 36, 43.3]].flatten + 48 + { 0.3.rand }).value.midicps,
 pan: { rand(-0.9, 0.9) },
 resFreq: 1 / 8,
-jump: 1,
+jump: 4,
 nextJump: 2,
 grainDur: 2,
 bowFreq: 0.5,
@@ -357,114 +370,33 @@ crossingBuffer: ~crossingBuffer.bufnum,
 soundBuffer: ~buffer.bufnum,
 envBuffer: ~env.bufnum,
 ).play
+);
+
+(
+(
+instrument: \postHARM,
+in: 10,
+out: 0
+).play;
+
+(
+instrument: \strikeHARM,
+out: 10,
+dur: 10,
+amp: 1,
+freq: ([-3 + [0, 0.1, 0.21, 3, 3.013]].flatten + 25 + { 0.3.rand }).value.midicps,
+pan: { rand(-0.9, 0.9) },
+resFreq: 1.0,
+jump: 8,
+nextJump: 12,
+grainDur: 12,
+bowFreq: 0.6,
+crossingBuffer: ~crossingBuffer.bufnum,
+soundBuffer: ~buffer.bufnum,
+envBuffer: ~env.bufnum,
+).play
 )
 
-~synth = {
-	var mousePos, centerPos,
-	centerPosA, centerPosB,
-	centerA, centerB,
-	nextCenterA, nextCenterB,
-	startA, startB, nextStartA, nextStartB,
-	trig,
-	dur, durA, durB, trigDurA, trigDurB,
-	trigStartA, trigStartB,
-	trigNextStartA, trigNextStartB,
-	sigA,
-	nextcenterPosA, nextcenterPosB, centerPosMix, rate,
-	wavelength,
-	poll, final, resFreq, env, jump;
-
-	final = Splay.ar(([-3, 2, 4, 6, 6.1] + 63).midicps.collect({
-		|freq|
-
-		resFreq = freq.postln;// * LFNoise2.ar(1 / 20, 0.01, 1) * LFNoise2.kr(0.4, 0.6, 1.6).round(1);
-//		freq = freq * Lag3.kr(LFNoise2.kr(0.05).range(0.9, 1.15).round(0.2), 10);
-		//centerPos = LFSaw.ar(1 / 40, Rand(0, 0.0)) + LFNoise2.kr(1, 0.1);
-		//env = Decay2.ar(Impulse.ar([1/2, 1/6.rand]), 0.001, 4);
-		env = Impulse.ar(1 / 4) + DelayN.ar(Impulse.ar(3 / (1..6).choose), 0.2, LFNoise2.kr(0.06, 0.03, 0.03));
-		env = Decay2.ar(env, 0.001, 4.5) * 0.3;
-		centerPos = LFNoise2.kr(LFNoise2.kr(3, 0.2, 0.21), 0.1, 0.9);
-		//centerPos = LFNoise2.kr(1, 0.03, MouseY.kr(0.03, 0.97, lag:5));
-		//centerPos = 0.5;
-
-		//centerPos = (centerPos * BufSamples.kr( ~crossingBuffer.bufnum )).min(BufSamples.kr( ~crossingBuffer.bufnum )).max(0);
-		//centerPos = LFSaw.ar([0.01,0.02,0.04, 0.035] / BufDur.kr(~buffer.bufnum)) + MouseX.kr(0,2) % 1;
-		centerPos = centerPos * BufSamples.kr(~crossingBuffer.bufnum);
-
-		jump = 1;
-		centerPosA = 	Select.kr(centerPos.floor % 2, [centerPos.floor + jump, centerPos.floor]);
-		centerPosB = 	Select.kr(centerPos.floor % 2, [centerPos.floor, centerPos.floor + jump]);
-		centerPosMix = 	Select.kr(centerPos.floor % 2, [1 - (centerPos - centerPosB), centerPos - centerPosA]);
-
-		nextcenterPosA = centerPosA + (1 - env * 6).round(1);
-		nextcenterPosB = centerPosB + (1 - env * 6).round(1);
-		centerA = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
-		centerB = 		{ Dbufrd(~crossingBuffer.bufnum, centerPosB % BufSamples.kr(~crossingBuffer.bufnum), 1) };
-		nextCenterA =	{ Dbufrd(~crossingBuffer.bufnum, nextcenterPosA % BufSamples.kr(~crossingBuffer.bufnum), 1) };
-		nextCenterB =	{ Dbufrd(~crossingBuffer.bufnum, nextcenterPosB % BufSamples.kr(~crossingBuffer.bufnum), 1) };
-
-		wavelength = LFNoise2.kr(0.05, 0.05, wavelength);
-		//wavelength = 0.5;
-		durA = { ( (nextCenterA - centerA)/SampleRate.ir ).max(0.0000000001).min(1) / wavelength };
-		durB = { ( (nextCenterB - centerB)/SampleRate.ir ).max(0.0000000001).min(1) / wavelength };
-
-		startA = centerA - (durA / 2);
-		startB = centerB - (durB / 2);
-		nextStartA = nextCenterA - (durA / 2);
-		nextStartB = nextCenterB - (durB / 2);
-
-		//dur = durA + ((durB - durA) * centerPosMix);
-		dur = freq.reciprocal;
-
-		#trig, trigStartA, trigStartB, trigNextStartA, trigNextStartB, trigDurA, trigDurB =
-		//TDuty.ar(dur, 0, [ 1, startA, startB, nextStartA, nextStartB, durA, durB ] );
-		TDuty.ar(dur, 0, [ 1, centerA, centerB, nextCenterA, nextCenterB, durA, durB ] );
-		//centerPosMix = Gate.ar( centerPosMix, trig );
-
-		Out.kr(0, [ centerPosMix, centerPosA, centerPosB,
-			Gate.ar( trigDurA, trigDurA),
-			Gate.ar( trigStartA / BufSamples.kr(~buffer.bufnum), trigStartA / BufSamples.kr(~buffer.bufnum)),
-			Gate.ar( trigDurB, trigDurB),
-			Gate.ar( trigStartB / BufSamples.kr(~buffer.bufnum) , trigStartB / BufSamples.kr(~buffer.bufnum))
-		]);
-		sigA = [ XFade2.ar(
-			BufGrainB.ar( trig,
-				dur: trigDurA * 2,
-				sndbuf: ~buffer.bufnum,
-				rate: resFreq.explin(50, 4000, 0.25, 2.5),
-				pos: trigStartA / BufSamples.kr(~buffer.bufnum),
-				envbuf: ~env.bufnum,
-				interp: 4),
-			DC.ar(0),
-			(centerPosMix * 2 - 1)
-		),
-		XFade2.ar(
-			DC.ar(0),
-			BufGrainB.ar( trig,
-				dur: trigDurB * 2,
-				sndbuf: ~buffer.bufnum,
-				rate: resFreq.explin(50, 4000, 0.25, 2.5),
-				pos: trigStartB / BufSamples.kr(~buffer.bufnum),
-				envbuf: ~env.bufnum,
-				interp: 4),
-			(centerPosMix * 2 - 1)
-		)].sum * env;
-
-		sigA = sigA + Klank.ar(`[
-			[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-			[-75, -83, -97, -97, -90, -95, -99, -108, -111, -111, -111, -96, -112, -114].dbamp * 10,
-			(0.1 / (1..14))
-		], sigA, freqscale: resFreq, decayscale:10);
-
-		// sigA = CombC.ar( sigA, 5, [0.1, 0.5, 2.3, 4.5], 0.4 );
-		sigA = Mix(sigA);
-		//sigA = FreeVerb.ar( Mix(sigA), room:2.9 );
-		LeakDC.ar( sigA )
-	}));
-	final = final * EnvGen.kr(Env.sine(140), doneAction:2);
-	final = LeakDC.ar(final);
-}.play;
-)
 
 ~cap = AudioCapture("/Users/fsc/Desktop/SC_CLEAN/HARM/_capture");
 ~cap.track = "harm";
