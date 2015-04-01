@@ -2,8 +2,10 @@
 
 // Read and process file
 
-s.options.device = ServerOptions.devices[12];
+s.options.sampleRate = 48000
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 (
 var audio, freq, period, buffer, crossingBuffer, synth, pitchBuffer, pitches;
 var lastSample=0, lastZeroCrossing=0;
@@ -15,7 +17,7 @@ var overshoot, env, path, baseFreq;
 ~baseFreq = 261;
 path = "/Users/fsc/Documents/_sounds/cello/C-string/C-str-7-m-261.aif";
 // path = "/Users/fsc/Documents/_sounds/phil-samples/_forHARM/french-horn_F4_very-long_piano_glissando.wav";
-// path = "/Users/fsc/Documents/_sounds/phil-samples/_forHARM/french-horn_C3_very-long_pianissimo_normal.wav";
+//path = "/Users/fsc/Documents/_sounds/phil-samples/_forHARM/french-horn_C3_very-long_pianissimo_normal.wav";
 //path = "/Users/fsc/Documents/_sounds/stand/bluett.aiff";
 //path = "/Users/fsc/Documents/_sounds/antlers/bear-full.wav";
 //path = "/Users/fsc/Documents/_sounds/stand/dolce1.aiff";
@@ -133,6 +135,9 @@ fork {
 };
 ~plotLoc.(2200);
 
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 (
 ~crossingBuffer = Buffer.loadCollection(s, ~zeroCrossings.asArray);
 ~envsize = 1024;
@@ -158,10 +163,23 @@ s.sync;
 buffer.plot;
 
 
-
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 (
+DistCurve(\box,
+	{ |x| (x * 1).tanh * 0.8 },
+	{ |x| (x * 5).tanh * 0.8 },
+	{ |x| (x * 20).tanh * 0.8 }
+);
+
+DistCurve(\krsh,
+	[-1, 0, 1],
+	Env([-1, -0.8, -0.5, -0.8, 0.8, 0.5, 0.8, 1.0], curve:\hold)
+);
+
 ~harmbase = {
-	arg amp=1, pos, jump = 1, nextJump = 1, wavelength = 1, grainDur = 2, resFreq = 1, resAmt=10, resBump=0, freq=440, pan=0, crossingBuffer, soundBuffer, envBuffer;
+	arg amp=1, pos, jump = 1, nextJump = 1, wavelength = 1, grainDur = 2, resFreq = 1, resAmt=10, resBump=0, freq=440, pan=0, freqLag=10, crossingBuffer, soundBuffer, envBuffer,
+	partialBoost;
 
 	var centerPos, centerPosA, centerPosB, centerPosMix,
 	nextCenterPosA, nextCenterPosB,
@@ -173,6 +191,9 @@ buffer.plot;
 	soundBufferSamples = BufSamples.ir(soundBuffer);
 	crossingBufferSamples = BufSamples.ir(crossingBuffer);
 
+	freq = Lag2.kr(freq, freqLag);
+
+	resFreq = Lag2.kr(resFreq, freqLag);
 	resFreq = freq * resFreq;
 	wavelength = LFNoise2.kr(0.05, 0.05, wavelength);
 	centerPos = pos * crossingBufferSamples;
@@ -214,7 +235,7 @@ buffer.plot;
 			BufGrainB.ar( trig,
 				dur: trigDurA * grainDur,
 				sndbuf: soundBuffer,
-				rate: resFreq.explin(50, 4000, 0.25, 2.5),
+				rate: Latch.kr(resFreq.explin(50, 4000, 0.25, 2.5), 1),
 				pos: trigStartA / soundBufferSamples,
 				envbuf: envBuffer,
 				interp: 4),
@@ -226,7 +247,7 @@ buffer.plot;
 			BufGrainB.ar( trig,
 				dur: trigDurB * grainDur,
 				sndbuf: soundBuffer,
-				rate: resFreq.explin(50, 4000, 0.25, 2.5),
+				rate: Latch.kr(resFreq.explin(50, 4000, 0.25, 2.5), 1),
 				pos: trigStartB / soundBufferSamples,
 				envbuf: envBuffer,
 				interp: 4),
@@ -234,45 +255,26 @@ buffer.plot;
 		)
 	].sum;
 	sig = sig * amp;
-	sig = sig + Klank.ar(`[
+	partialBoost = 1.5;
+	sig = sig + DynKlank.ar(`[
 		[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-		[-75, -83, -97, -97, -90, -95, -99, -108, -111, -111, -111, -96, -112, -114].dbamp * 10,
-		(0.1 / (1..14))
-	], sig, freqscale: resFreq, decayscale:resAmt);
+		((partialBoost * 16) + [-75, -83, -97, -97, -90, -95, -99, -108, -111, -111, -111, -96, -112, -114]).dbamp * 10,
+		(0.5 / (1..14) * (partialBoost * 2))
+	], sig, freqscale:resFreq, decayscale:resAmt);
 	sig = LeakDC.ar(sig);
 	sig = Pan2.ar(sig, pan);
 };
 
-DistCurve(\krsh,
-	[-1, 0, 1],
-	Env([-1, -0.8, -0.5, -0.8, 0.8, 0.5, 0.8, 1.0], curve:\hold)
-);
-
-SynthDef(\longSineHARM, {
-	arg out, amp = 1, dur = 20, bowFreq=1.5, periodNum;
-	var env, sig, jump;
-	env = amp * EnvGen.kr(Env.sine(dur * 1.4), doneAction:2);
-	jump = LFNoise2.ar(0.2, 1, 4 + env);
-	sig = SynthDef.wrap(~harmbase, prependArgs: [
-		env,
-		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, 0.2),
-		jump
-	]);
-	sig = sig + MoogLadder.ar(DistCurve(\krsh).ar(sig, MouseX.kr(0, 1), MouseY.kr(0, 48), MouseY.kr(0, -48)), 8640, 0.2);
-	sig = LeakDC.ar(sig);
-	Out.ar(out, sig);
-}).addReplace;
-
 SynthDef(\strikeHARM, {
 	arg out=0, amp = 1, dur = 20, bowFreq=1.5, startPos=0.9, endPos=0.9, gate = 1;
 	var env, sig;
-	env = amp * EnvGen.kr(Env.adsr(1.1, 1.1, 0.01, 20), gate:gate, timeScale: dur, doneAction:2);
+	env = amp * EnvGen.kr(Env.adsr(4.1, 5.1, 0.7, 10), gate:Trig1.kr(1, dur), doneAction:2);
 	sig = SynthDef.wrap(~harmbase, prependArgs: [
 		env,
 		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, Line.kr(startPos, endPos, dur))
 	]);
 	Out.ar(out, sig);
-}).add;
+}).addReplace;
 
 SynthDef(\postHARM, {
 	| in, out, wetAmp |
@@ -286,29 +288,50 @@ SynthDef(\postHARM, {
 	Out.ar(out, sig + (wetAmp * wetSig));
 }).addReplace;
 
+
+SynthDef(\longSineHARM, {
+	arg out, amp = 1, dur = 20, bowFreq=1.5, periodNum;
+	var env, sig, jump;
+	env = amp * EnvGen.kr(Env.sine(dur * 1.4), doneAction:2);
+	jump = LFNoise2.ar(0.2, 1, 4 + env);
+	sig = SynthDef.wrap(~harmbase, prependArgs: [
+		env,
+		LFNoise2.kr(LFNoise2.kr(3, bowFreq / 2, bowFreq), 0.1, 0.2),
+		jump
+	]);
+	sig = sig + DistCurve(\box).ar(sig, 0.5, -6, 6) + MoogFF.ar(DistCurve(\box).ar(sig, 1, MouseY.kr(0.5, 4), 1), 60, 2.5);
+	sig = LeakDC.ar(sig);
+	Out.ar(out, sig);
+}).addReplace;
+
+
+)
+
+
+
 )
 
 (
 Pdef(\test, Pbind(
-	\freq, Pseq(([-3, 1, 4, 8, 13] + 68).midicps, inf),
-	\freq, Pseq(([-4, 1, 4, 8, 11] + 68).midicps, inf),
-	\freq, Pseq(([-4, 1, 4, 9, 11] + 68).midicps, inf),
+	//\freq, Pseq(([-3, 1, 4, 8, 13] + 68).midicps, inf),
+	//\freq, Pseq(([-4, 1, 4, 8, 11] + 68).midicps, inf),
+	//\freq, Pseq(([-4, 1, 4, 9, 11] + 68).midicps, inf),
 	\freq, Pseq(([-3, 2, 4, 9, 11] + 68).midicps, inf),
-	\freq, Pseq(([-4, 2, 4, 9, 11] + 68).midicps, inf),
-	\freq, Pseq(([-6, 2, 4, 9, 14] + 68).midicps, inf),
-	\freq, Pseq(([-8, 2, 4, 6, 11] + 68).midicps, inf),
-	\freq, Pseq(([-8, -2, 3, 6, 10] + 68).midicps, inf),
+	//\freq, Pseq(([-4, 2, 4, 9, 11] + 68).midicps, inf),
+	//\freq, Pseq(([-6, 2, 4, 9, 14] + 68).midicps, inf),
+	//\freq, Pseq(([-8, 2, 4, 6, 11] + 68).midicps, inf),
+	//\freq, Pseq(([-8, -2, 3, 6, 10] + 68).midicps, inf),
 	\dur, 0.1
-)).play;
+)).stop;
 )
 
 (
 Pdef(\pat1, Pbind(
 	\instrument, \longSineHARM,
 	\dur, Pseq([24], inf),
-	\amp, 1,
+	\amp, 0.2,
 	\freq, Pseq([
-		([-3 + [0, -12, -24], 1, 4, 8, 13].flatten + 48).midicps,
+		([-3 + [0, -12, -24], 1, 4, 8, 13, 25].flatten + 12).midicps,
 		([-4 + [0, -12, -24], 1, 4, 8, 11].flatten + 48).midicps,
 		([-4 + [0, -12, -24], 1, 4, 9, 11].flatten + 48).midicps,
 		([-3 + [0, -12, -24], 2, 4, 9, 11].flatten + 48).midicps,
@@ -322,14 +345,14 @@ Pdef(\pat1, Pbind(
 	], inf) ,
 //	\freq, ([-3-12, -3, 2, 4.1, 8, 8.1, 8.064, 14, 14.05] + 68).midicps,
 	\pan, { rand(-0.4, 0.4) },
-	\resFreq, 1 / 8,
+	\resFreq, 1 / 2,
 	\jump, 4,
 	\nextJump, 4,
 	\grainDur, 2,
 	\bowFreq, 0.12,
 	\startPos, 0.1,
 	\endPos, 0.9,
-	\out, 10,
+	\out, 0,
 	\crossingBuffer, ~crossingBuffer.bufnum,
 	\soundBuffer, ~buffer.bufnum,
 	\envBuffer, ~env.bufnum,
@@ -352,20 +375,22 @@ instrument: \postHARM,
 in: 10,
 out: 0
 ).play;
+)
 
-(.
+(
+(
 instrument: \longSineHARM,
-out: 10,
-dur: 30,
+out: 0,
+dur: 8,
 amp: 1,
 // 40 -> 42 -> 40 -> 38 etc.
-freq: ([-3 + [0, 12, 24, 36, 43.3]].flatten + 48 + { 0.3.rand }).value.midicps,
+freq: ([-3 + [0, 12, 24, 36, 43.3]].flatten + 15 + { 0.3.rand }).value.midicps,
 pan: { rand(-0.9, 0.9) },
-resFreq: 1 / 8,
-jump: 4,
-nextJump: 2,
-grainDur: 2,
-bowFreq: 0.5,
+resFreq: 1 / 12,
+jump: 8,
+nextJump: 8,
+grainDur: 16,
+bowFreq: 0.2,
 crossingBuffer: ~crossingBuffer.bufnum,
 soundBuffer: ~buffer.bufnum,
 envBuffer: ~env.bufnum,
@@ -376,27 +401,33 @@ envBuffer: ~env.bufnum,
 (
 instrument: \postHARM,
 in: 10,
-out: 0
+out: 15
 ).play;
+)
+
 
 (
-instrument: \strikeHARM,
-out: 10,
-dur: 10,
-amp: 1,
-freq: ([-3 + [0, 0.1, 0.21, 3, 3.013]].flatten + 25 + { 0.3.rand }).value.midicps,
-pan: { rand(-0.9, 0.9) },
-resFreq: 1.0,
-jump: 8,
-nextJump: 12,
-grainDur: 12,
-bowFreq: 0.6,
-crossingBuffer: ~crossingBuffer.bufnum,
-soundBuffer: ~buffer.bufnum,
-envBuffer: ~env.bufnum,
+e = (
+	instrument: \strikeHARM,
+	out: 0,
+	dur: 20,
+	amp: 0.2,
+	freq: ([3 + [0, 0.1, 0.04]].flatten + 21 + { 0.3.rand }).value.midicps,
+	pan: { rand(-0.3, 0.3) },
+	resFreq: 1,
+	resAmt: 20,
+	jump: 4,
+	nextJump: 4,
+	grainDur: 16,
+	bowFreq: 0.5,
+	crossingBuffer: ~crossingBuffer.bufnum,
+	soundBuffer: ~buffer.bufnum,
+	envBuffer: ~env.bufnum,
 ).play
 )
 
+e.set(\resFreq, 8);
+e.set(\freq, e.freq * 1.01)
 
 ~cap = AudioCapture("/Users/fsc/Desktop/SC_CLEAN/HARM/_capture");
 ~cap.track = "harm";
